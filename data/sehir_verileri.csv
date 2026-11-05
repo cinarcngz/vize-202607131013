@@ -1,0 +1,11 @@
+zaman,sensor,deger,birim,konum
+2026-11-01 08:00,trafik,45,arac/dk,Kadikoy
+2026-11-01 08:05,trafik,52,arac/dk,Kadikoy
+2026-11-01 08:10,trafik,48,arac/dk,Kadikoy
+2026-11-01 08:15,trafik,51,arac/dk,Kadikoy
+2026-11-01 08:20,trafik,250,arac/dk,Kadikoy
+2026-11-01 08:00,hava,42,ug/m3,Uskudar
+2026-11-01 08:05,hava,45,ug/m3,Uskudar
+2026-11-01 08:10,hava,43,ug/m3,Uskudar
+2026-11-01 08:15,hava,44,ug/m3,Uskudar
+2026-11-01 08:20,hava,180,ug/m3,Uskudar
