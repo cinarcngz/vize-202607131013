@@ -1,44 +1,32 @@
 
-import streamlit as st
 import pandas as pd
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Sayfa ayarlari
-st.set_page_config(
-    page_title="Akilli Sehir Asistani",
-    page_icon="🏙️",
-    layout="wide"
-)
-
-# Dosya yolları
 BASE_DIR = Path(__file__).parent
 DATA_PATH = BASE_DIR / "data" / "sehir_verileri.csv"
 DOC_PATH = BASE_DIR / "docs" / "sehir_bilgisi.md"
 
-st.title("🏙️ Akilli Sehir Yonetim Sistemi")
-st.write("RAG Bilgi Asistani ve Anomali Tespiti")
 
-# Bilgi dokumanini oku
 def load_knowledge():
-    if DOC_PATH.exists():
-        return DOC_PATH.read_text(encoding="utf-8")
-    return ""
+    if not DOC_PATH.exists():
+        return []
 
-# RAG bilgi asistanı
-def rag_answer(question, document):
-    if not document.strip():
-        return "Bilgi dokumani bulunamadi."
+    document = DOC_PATH.read_text(encoding="utf-8")
 
-    chunks = [
+    return [
         part.strip()
         for part in document.split("\n\n")
         if len(part.strip()) > 20
     ]
 
+
+def rag_answer(question):
+    chunks = load_knowledge()
+
     if not chunks:
-        return "Dokumanda ilgili bilgi bulunamadi."
+        return "Bilgi dokumani bulunamadi."
 
     vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform(chunks + [question])
@@ -51,17 +39,19 @@ def rag_answer(question, document):
     best_index = scores.argmax()
 
     if scores[best_index] == 0:
-        return "Bu konuda bilgi dokumaninda eslesen bilgi bulunamadi."
+        return "Soruyla ilgili bilgi bulunamadi."
 
     return chunks[best_index]
 
-# Sensör verilerini oku
-def load_sensor_data():
-    if DATA_PATH.exists():
-        return pd.read_csv(DATA_PATH)
-    return pd.DataFrame()
 
-# Anomali tespiti
+def load_sensor_data():
+    if not DATA_PATH.exists():
+        print("Sensor veri dosyasi bulunamadi.")
+        return pd.DataFrame()
+
+    return pd.read_csv(DATA_PATH)
+
+
 def detect_anomalies(data):
     if data.empty:
         return pd.DataFrame()
@@ -69,10 +59,14 @@ def detect_anomalies(data):
     results = []
 
     for sensor in data["sensor"].unique():
-        group = data[data["sensor"] == sensor].copy()
+
+        group = data[
+            data["sensor"] == sensor
+        ].copy()
 
         q1 = group["deger"].quantile(0.25)
         q3 = group["deger"].quantile(0.75)
+
         iqr = q3 - q1
 
         lower = q1 - 1.5 * iqr
@@ -87,67 +81,73 @@ def detect_anomalies(data):
 
     return pd.concat(results, ignore_index=True)
 
-# Sekmeler
-tab1, tab2, tab3 = st.tabs([
-    "💬 RAG Bilgi Asistani",
-    "📊 Anomali Tespiti",
-    "📁 Sensor Verileri"
-])
 
-# RAG sekmesi
-with tab1:
-    st.header("Sehir Bilgi Asistani")
-
-    question = st.text_input(
-        "Akilli sehir hakkinda bir soru sorun:"
-    )
-
-    if st.button("Cevapla"):
-        document = load_knowledge()
-
-        if question.strip():
-            answer = rag_answer(question, document)
-            st.success(answer)
-        else:
-            st.warning("Lutfen bir soru yazin.")
-
-# Anomali sekmesi
-with tab2:
-    st.header("Sensor Anomali Analizi")
-
+def show_sensor_data():
     data = load_sensor_data()
 
     if not data.empty:
-        analyzed = detect_anomalies(data)
+        print("\n--- SENSOR VERILERI ---")
+        print(data.to_string(index=False))
 
-        st.subheader("Tespit Edilen Anomaliler")
 
-        anomalies = analyzed[analyzed["anomali"]]
+def show_anomalies():
+    data = load_sensor_data()
 
-        if not anomalies.empty:
-            st.warning(
-                f"{len(anomalies)} anomali tespit edildi."
-            )
-            st.dataframe(anomalies)
-        else:
-            st.success("Anomali tespit edilmedi.")
+    if data.empty:
+        return
 
-        st.subheader("Sensor Degerleri")
-        st.bar_chart(
-            data,
-            x="sensor",
-            y="deger"
+    analyzed = detect_anomalies(data)
+
+    anomalies = analyzed[
+        analyzed["anomali"]
+    ]
+
+    print("\n--- ANOMALI SONUCLARI ---")
+
+    if anomalies.empty:
+        print("Anomali tespit edilmedi.")
+    else:
+        print(anomalies.to_string(index=False))
+        print(
+            "\nToplam anomali:",
+            len(anomalies)
         )
-    else:
-        st.error("Sensor veri dosyasi bulunamadi.")
 
-# Veri sekmesi
-with tab3:
-    st.header("Sehir Sensor Verileri")
 
-    data = load_sensor_data()
+def main():
+    while True:
 
-    if not data.empty:
-        st.dataframe(data, use_container_width=True)
-    else:
-        st.warning("Veri bulunamadi.")
+        print("\n==============================")
+        print(" AKILLI SEHIR YONETIM SISTEMI")
+        print("==============================")
+        print("1 - RAG Bilgi Asistani")
+        print("2 - Anomali Tespiti")
+        print("3 - Sensor Verilerini Goruntule")
+        print("0 - Cikis")
+
+        choice = input("\nSeciminiz: ")
+
+        if choice == "1":
+            question = input(
+                "\nSehir hakkinda sorunuzu yazin: "
+            )
+
+            print("\nAsistan cevabi:")
+            print(rag_answer(question))
+
+        elif choice == "2":
+            show_anomalies()
+
+        elif choice == "3":
+            show_sensor_data()
+
+        elif choice == "0":
+            print("Programdan cikiliyor.")
+            break
+
+        else:
+            print("Gecersiz secim!")
+
+
+if __name__ == "__main__":
+    main()
